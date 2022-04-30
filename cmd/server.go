@@ -6,7 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
+	// "strconv"
 	"time"
 
 	"github.com/dgraph-io/badger/v3"
@@ -31,9 +31,10 @@ type server struct {
 	db     *badger.DB
 }
 
-func (s *server) get(key uint64) (uint64, error) {
-	keyS := strconv.FormatUint(key, 10)
-	var valS uint64
+func (s *server) get(key string) (string, error) {
+	// keyS := strconv.FormatUint(key, 10)
+	keyS := key
+	var valS string
 
 	err := s.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(keyS))
@@ -45,19 +46,20 @@ func (s *server) get(key uint64) (uint64, error) {
 		err = item.Value(func(val []byte) error {
 			//s.logger.Info("Value that I got", zap.String("vals", string(val)))
 			valCopy := append([]byte{}, val...)
-			valS, err = strconv.ParseUint(string(valCopy), 10, 64)
-			return err
+			// valS, err = strconv.ParseUint(string(valCopy), 10, 64)
+			valS = string(valCopy)
+			return nil
 		})
 
 		return err
 	})
 	if err != nil {
-		return 0, err
+		return "0", err
 	}
 	return valS, err
 }
 
-func (s *server) put(key, val uint64) error {
+func (s *server) put(key, val string) error {
 
 	data := event{
 		OpType: "SET",
@@ -79,12 +81,12 @@ func (s *server) put(key, val uint64) error {
 	return nil
 }
 
-func (s *server) delete(key uint64) error {
+func (s *server) delete(key string) error {
 
 	data := event{
 		OpType: "SET",
 		Key:    key,
-		Value:  0,
+		Value:  "0",
 	}
 
 	dataJson, err := json.Marshal(data)
