@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+
 	// "strconv"
 
 	"github.com/gorilla/mux"
@@ -22,18 +23,21 @@ func (s *httpService) handleKeyGet(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	// key, err := strconv.ParseUint(vars["id"], 10, 64)
 	key := vars["id"]
+	relation := vars["relation"]
 	// if err != nil {
 	// 	http.Error(w, "Wrong key", 400)
 	// 	return
 	// }
-	value, err := s.store.get(key)
+	value, err := s.store.get(key, relation)
 	if err != nil {
 		http.Error(w, "Could not get the key", 500)
 		return
 	}
 	// valueS := strconv.FormatUint(value, 10)
-	valueS := value
-	_, err = w.Write([]byte(valueS))
+	// valueS := [1]string{value}
+	valueM, _ := json.Marshal(value)
+	_, err = w.Write(valueM)
+	// _, err = w.Write([]byte(valueS))
 	if err != nil {
 		http.Error(w, "Error in writing response", 500)
 		return
@@ -44,6 +48,7 @@ func (s *httpService) handleKeyPut(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	// key, err := strconv.ParseUint(vars["id"], 10, 64)
 	key := vars["id"]
+	relation := vars["relation"]
 	// if err != nil {
 	// 	http.Error(w, "Wrong key", 400)
 	// 	return
@@ -64,7 +69,7 @@ func (s *httpService) handleKeyPut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	value := msg.Value
-	err = s.store.put(key, value)
+	err = s.store.put(key, relation, value)
 	if err != nil {
 		http.Error(w, "Could not put the key", 500)
 		return
@@ -79,6 +84,7 @@ func (s *httpService) handleKeyPut(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *httpService) handleKeyDelete(w http.ResponseWriter, r *http.Request) {
+	// TODO
 	vars := mux.Vars(r)
 	// key, err := strconv.ParseUint(vars["id"], 10, 64)
 	key := vars["id"]
@@ -128,9 +134,9 @@ func (s *httpService) Start() {
 	s.logger.Info("Server Starting", zap.String("address", s.addr))
 	r := mux.NewRouter()
 	r.HandleFunc("/join", s.handleJoin).Methods("POST")
-	r.HandleFunc("/{id}", s.handleKeyGet).Methods("GET")
-	r.HandleFunc("/{id}", s.handleKeyPut).Methods("PUT")
-	r.HandleFunc("/{id}", s.handleKeyDelete).Methods("DELETE")
+	r.HandleFunc("/{id}/{relation}", s.handleKeyGet).Methods("GET")
+	r.HandleFunc("/{id}/{relation}", s.handleKeyPut).Methods("PUT")
+	r.HandleFunc("/{id}/{relation}", s.handleKeyDelete).Methods("DELETE")
 	http.Handle("/", r)
 	srv := http.Server{
 		Handler: r,
