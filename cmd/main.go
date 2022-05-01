@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	// "github.com/gorilla/websocket"
 	"go.uber.org/zap"
 )
 
@@ -43,8 +44,16 @@ func main() {
 	httpAddr := flag.String("haddr", "localhost:8000", "Set the address for the HTTP server")
 	raftAddr := flag.String("raddr", "localhost:9000", "Set the address for the Raft")
 	joinAddr := flag.String("join", "", "Set the address for the node to join")
+	// websocketAddr := flag.String("addr", "localhost:8080", "Web socket address to ping client on leader change")
 
 	flag.Parse()
+
+	// u := url.URL{Scheme: "ws", Host: *websocketAddr, Path: "/echo"}
+	// c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	// if err != nil {
+	// 	log.Fatal("websocket:", err)
+	// }
+	// defer conn.Close()
 
 	// haddr, err := net.ResolveTCPAddr("tcp", *httpAddr)
 	// if err != nil {
@@ -84,6 +93,16 @@ func main() {
 		}
 		logger.Info("Able to join?")
 	}
+
+	// go func() {
+	// 	leaderChange := <-srv.raft.LeaderCh()
+	// 	if leaderChange {
+	// 		err := conn.WriteMessage(websocket.TextMessage, []byte(*id))
+	// 		if err != nil {
+	// 			logger.Fatal("write error")
+	// 		}
+	// 	}
+	// }()
 
 	httpsrv := &httpService{
 		addr:   *httpAddr,

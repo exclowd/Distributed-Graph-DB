@@ -10,6 +10,7 @@ import (
 	// "strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 )
 
@@ -17,6 +18,7 @@ type httpService struct {
 	addr   string
 	store  *server
 	logger *zap.Logger
+	conn   *websocket.Conn
 }
 
 func (s *httpService) handleKeyGet(w http.ResponseWriter, r *http.Request) {
@@ -130,10 +132,34 @@ func (s *httpService) handleJoin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *httpService) leader(w http.ResponseWriter, r *http.Request) {
+	upgrader := websocket.Upgrader{}
+	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
+
+	s.conn, _ = upgrader.Upgrade(w, r, nil)
+	log.Println("Client connected")
+
+	go func() {
+		leaderChange := <-s.store.raft.LeaderCh()
+		log.Println("in fun")
+
+		if leaderChange {
+			log.Println("in change")
+			err := s.conn.WriteMessage(websocket.TextMessage, []byte("change"))
+			if err != nil {
+				s.logger.Fatal("write error")
+			}
+		}
+	}()
+	// w.Write([]byte("hello"))
+	s.conn.WriteMessage(websocket.TextMessage, []byte("tichnas"))
+}
+
 func (s *httpService) Start() {
 	s.logger.Info("Server Starting", zap.String("address", s.addr))
 	r := mux.NewRouter()
 	r.HandleFunc("/join", s.handleJoin).Methods("POST")
+	r.HandleFunc("/leader", s.leader)
 	r.HandleFunc("/{id}/{relation}", s.handleKeyGet).Methods("GET")
 	r.HandleFunc("/{id}/{relation}", s.handleKeyPut).Methods("PUT")
 	r.HandleFunc("/{id}/{relation}", s.handleKeyDelete).Methods("DELETE")
@@ -142,5 +168,6 @@ func (s *httpService) Start() {
 		Handler: r,
 		Addr:    s.addr,
 	}
+
 	log.Fatal(srv.ListenAndServe())
 }
