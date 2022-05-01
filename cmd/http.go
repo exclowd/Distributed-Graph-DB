@@ -18,7 +18,6 @@ type httpService struct {
 	addr   string
 	store  *server
 	logger *zap.Logger
-	conn   *websocket.Conn
 }
 
 func (s *httpService) handleKeyGet(w http.ResponseWriter, r *http.Request) {
@@ -136,23 +135,23 @@ func (s *httpService) leader(w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{}
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 
-	s.conn, _ = upgrader.Upgrade(w, r, nil)
+	conn, _ := upgrader.Upgrade(w, r, nil)
 	log.Println("Client connected")
 
-	go func() {
+	conn.WriteMessage(websocket.TextMessage, []byte("tichnas"))
+
+	for {
 		leaderChange := <-s.store.raft.LeaderCh()
 		log.Println("in fun")
 
 		if leaderChange {
 			log.Println("in change")
-			err := s.conn.WriteMessage(websocket.TextMessage, []byte("change"))
+			err := conn.WriteMessage(websocket.TextMessage, []byte("change"))
 			if err != nil {
 				s.logger.Fatal("write error")
 			}
 		}
-	}()
-	// w.Write([]byte("hello"))
-	s.conn.WriteMessage(websocket.TextMessage, []byte("tichnas"))
+	}
 }
 
 func (s *httpService) Start() {
